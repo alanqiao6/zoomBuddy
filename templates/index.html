@@ -1,39 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Zoom Engagement Analyzer</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body>
-<div class="container mt-4">
-  <h1 class="mb-4">Zoom Engagement Analyzer</h1>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mt-4">
+  <h2>Upload Your Files</h2>
+  <p>Please upload your Zoom transcript (VTT), chat log (TXT), and student roster (TXT). Optionally, you can also upload a lesson plan (TXT).</p>
   <form action="{{ url_for('process_files') }}" method="post" enctype="multipart/form-data">
-    <div class="form-group">
-      <label for="transcript">Transcript (VTT):</label>
-      <input type="file" class="form-control-file" id="transcript" name="transcript" required>
+    <div class="mb-3">
+      <label for="transcript" class="form-label">Transcript (VTT):</label>
+      <input type="file" class="form-control" id="transcript" name="transcript" required>
     </div>
-    <div class="form-group">
-      <label for="chat">Chat Log (TXT):</label>
-      <input type="file" class="form-control-file" id="chat" name="chat" required>
+    <div class="mb-3">
+      <label for="chat" class="form-label">Chat Log (TXT):</label>
+      <input type="file" class="form-control" id="chat" name="chat" required>
     </div>
-    <div class="form-group">
-      <label for="roster">Student Roster (TXT):</label>
-      <input type="file" class="form-control-file" id="roster" name="roster" required>
+    <div class="mb-3">
+      <label for="roster" class="form-label">Student Roster (TXT):</label>
+      <input type="file" class="form-control" id="roster" name="roster" required>
     </div>
-    <div class="form-group">
-      <label for="lesson">Lesson Plan (TXT) [Optional]:</label>
-      <input type="file" class="form-control-file" id="lesson" name="lesson">
+    <div class="mb-3">
+      <label for="lesson" class="form-label">Lesson Plan (TXT) [Optional]:</label>
+      <input type="file" class="form-control" id="lesson" name="lesson">
     </div>
-    <button type="submit" class="btn btn-primary">Process Data</button>
+    <button type="submit" class="btn btn-success">Analyze Engagement</button>
   </form>
 </div>
-</body>
-</html>
+{% endblock %}

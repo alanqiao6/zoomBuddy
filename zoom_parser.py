@@ -11,8 +11,7 @@ This module provides functions to:
   - Write the combined data to CSV.
 
 File inputs are "I/O‑optional": you can pass either a file path (str) or a file-like object.
-
-The fixed n‑grams file is expected to be located at "ngrams.csv" in the same directory as this module.
+If no n‑grams file is provided, it defaults to the fixed "ngrams.csv" file in the repository.
 """
 
 import re
@@ -62,7 +61,6 @@ def timestamp_to_seconds(timestamp_str):
 def parse_vtt(input_data):
     """
     Parse a VTT file (WebVTT format) and return a list of transcript entries.
-    
     Each entry is a dict with keys: type, block_index, timestamp, time, end, speaker, text.
     input_data can be a file path or file-like object.
     """
@@ -110,7 +108,6 @@ def parse_chat_log(input_data):
     """
     Parse a chat log file where each line is formatted as:
       timestamp[TAB]Speaker Name:[TAB]Message text
-    
     input_data can be a file path or file-like object.
     Returns a list of chat entries (dicts) with keys: type, timestamp, time, speaker, message.
     """
@@ -264,15 +261,14 @@ def process_zoom_data(vtt_input, chat_input, output, ngrams_input=None, lesson_p
     
     Parameters:
       vtt_input, chat_input, lesson_plan_input: file path (str) or file-like object.
-      output: file path (str) or file-like object.
-      ngrams_input: if provided, a file path or file-like object; if None, a fixed file "ngrams.csv" is used.
+      output: file path (str) or file-like object to write CSV.
+      ngrams_input: if not provided, a fixed file "ngrams.csv" in the same directory is used.
     
     Returns the combined list of entries.
     """
     transcript = parse_vtt(vtt_input)
     chat_log = parse_chat_log(chat_input)
     combined = combine_data(transcript, chat_log)
-    # Use fixed n-grams file if none provided.
     if ngrams_input is None:
         ngrams_input = os.path.join(os.path.dirname(__file__), "ngrams.csv")
     ngrams_list = load_ngrams(ngrams_input)

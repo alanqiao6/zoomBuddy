@@ -29,17 +29,15 @@ def read_text(input_data):
 def load_roster(input_data):
     """
     Load the roster of student names (one per line).
-    If input_data is already a set, return it as is.
-    Otherwise, input_data can be a file path or file-like object.
-    Returns a set of student names, all converted to lower-case for matching.
+    If input_data is already a set, return it.
+    Otherwise, convert all names to lower-case for matching.
     """
     if isinstance(input_data, set):
-        # Ensure all names are in lower-case
         return {name.lower() for name in input_data}
     content = read_text(input_data)
     students = set()
     for line in content.splitlines():
-        name = line.strip().lower()  # Convert to lower-case for consistency
+        name = line.strip().lower()
         if name:
             students.add(name)
     return students
@@ -52,11 +50,11 @@ def aggregate_engagement(input_csv, roster_input):
       input_csv: parsed CSV file (file path or file-like object) from zoom_parser.py.
       roster_input: roster file (file path, file-like object, or a set of names).
     
-    Returns a tuple (student_stats, categories) where:
-      - student_stats is a dict mapping student names to metrics.
-      - categories is a list of expected engagement categories.
+    Returns:
+      (student_stats, categories) where:
+        - student_stats is a dict mapping student names to metrics.
+        - categories is a list of expected engagement categories.
     """
-    # Expected engagement categories
     categories = ["environment", "community", "personal", "wonder", "tinker", "identity", "disruption"]
     roster_set = load_roster(roster_input)
     student_stats = {student: {"total_messages": 0, "lesson_relevancy_sum": 0.0, "relevancy_count": 0} for student in roster_set}
@@ -66,7 +64,6 @@ def aggregate_engagement(input_csv, roster_input):
     content = read_text(input_csv)
     reader = csv.DictReader(content.splitlines())
     for row in reader:
-        # Convert speaker to lower-case for matching
         speaker = row.get("speaker", "").strip().lower()
         if speaker in student_stats:
             student_stats[speaker]["total_messages"] += 1
@@ -117,8 +114,6 @@ def write_aggregate_to_csv(aggregate_data, categories, output):
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
-
-# ---------- CLI (For Testing) ----------
 
 if __name__ == "__main__":
     import argparse

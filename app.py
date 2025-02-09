@@ -6,9 +6,9 @@ from zoom_parser import process_zoom_data
 from aggregate_engagement import load_roster, aggregate_engagement, write_aggregate_to_csv
 
 app = Flask(__name__)
-app.secret_key = "secret"  # Change this for production.
+app.secret_key = "secret"  # Change this in production!
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit.
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB file limit
 
 def save_uploaded_file(file_storage):
     """
@@ -20,8 +20,16 @@ def save_uploaded_file(file_storage):
     return path
 
 @app.route('/')
-def index():
+def home():
+    return render_template('home.html')
+
+@app.route('/upload')
+def upload():
     return render_template('index.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
 
 @app.route('/process', methods=['POST'])
 def process_files():
@@ -29,11 +37,11 @@ def process_files():
     transcript_file = request.files.get("transcript")
     chat_file = request.files.get("chat")
     roster_file = request.files.get("roster")
-    lesson_file = request.files.get("lesson")
+    lesson_file = request.files.get("lesson")  # Optional
     
     if not (transcript_file and chat_file and roster_file):
         flash("Transcript, chat log, and roster files are required.", "danger")
-        return redirect(url_for('index'))
+        return redirect(url_for('upload'))
     
     # Save files.
     transcript_path = save_uploaded_file(transcript_file)
@@ -41,7 +49,7 @@ def process_files():
     roster_path = save_uploaded_file(roster_file)
     lesson_path = save_uploaded_file(lesson_file) if lesson_file else None
     
-    # Process Zoom data. Note: n-grams are fixed; we do not upload them.
+    # Process Zoom data (n-grams file is fixed and loaded automatically).
     parsed_csv_path = os.path.join(app.config['UPLOAD_FOLDER'], "parsed_output.csv")
     process_zoom_data(transcript_path, chat_path, parsed_csv_path, ngrams_input=None, lesson_plan_input=lesson_path)
     
@@ -57,9 +65,6 @@ def process_files():
 
 @app.route('/download/<filename>')
 def download_file(filename):
-    """
-    Serve a file from the UPLOAD_FOLDER for download.
-    """
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
 if __name__ == '__main__':

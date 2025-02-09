@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron mt-4 p-5 bg-light rounded-3">
+  <h1 class="display-4">Welcome to Zoom Engagement Analyzer!</h1>
+  <p class="lead">This tool analyzes Zoom session data to provide insights into student engagement.</p>
+  <hr class="my-4">
+  <p>Upload your transcript, chat log, and roster to see detailed metrics on student participation, category counts, and lesson relevancy.</p>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('upload') }}" role="button">Get Started</a>
+</div>
+{% endblock %}
