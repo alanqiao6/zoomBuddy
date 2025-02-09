@@ -51,7 +51,7 @@ def process_files():
     
     # Process Zoom data (the fixed n‑grams file is used automatically).
     parsed_csv_path = os.path.join(app.config['UPLOAD_FOLDER'], "parsed_output.csv")
-    process_zoom_data(transcript_path, chat_path, parsed_csv_path, ngrams_input=None, lesson_plan_input=lesson_path)
+    process_zoom_data(transcript_path, chat_path, parsed_csv_path, lesson_plan_input=lesson_path)
     
     # Aggregate engagement metrics.
     roster_set = load_roster(roster_path)

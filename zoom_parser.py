@@ -5,21 +5,44 @@ zoom_parser.py
 This module provides functions to:
   - Parse Zoom VTT transcript files and chat logs.
   - Combine and stem the parsed messages.
-  - Load a CSV file of n‑grams and their associated categories (with word stemming for consistency).
-  - Categorize each message by matching stemmed n‑grams.
+  - Train a multilabel classifier (using MLkNN) on a labeled dataset.
+  - Use the trained classifier to assign categories to messages.
   - Compute semantic relevancy of each message to a lesson plan using SentenceTransformer.
   - Write the combined data to CSV.
 
 File inputs are "I/O‑optional": you can pass either a file path (str) or a file-like object.
-If no n‑grams file is provided, it defaults to the fixed "ngrams.csv" file in the same directory.
+
+The fixed training dataset is expected to be located at "training_data.csv" in the same directory as this module.
 """
 
+import os
 import re
 import csv
 import argparse
-import os
+import pickle  # For saving/loading the classifier model
+
+# ============================
+# PATCH: Fix NearestNeighbors error
+# ============================
+import sklearn.neighbors
+_original_NearestNeighbors = sklearn.neighbors.NearestNeighbors
+class PatchedNearestNeighbors(_original_NearestNeighbors):
+    def __init__(self, k, **kwargs):
+        self.k = k  # Save k for later use
+        super().__init__(n_neighbors=k, **kwargs)
+sklearn.neighbors.NearestNeighbors = PatchedNearestNeighbors
+# ============================
+
+# Import text processing and similarity libraries.
 from nltk.stem.porter import PorterStemmer
 from sentence_transformers import SentenceTransformer, util
+
+# For the multilabel classifier.
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from skmultilearn.adapt import MLkNN
+from sklearn.metrics import hamming_loss, accuracy_score
 
 # Optionally, try to import extract_keywords from model_classifier.
 try:
@@ -61,7 +84,8 @@ def timestamp_to_seconds(timestamp_str):
 def parse_vtt(input_data):
     """
     Parse a VTT file (WebVTT format) and return a list of transcript entries.
-    Each entry is a dict with keys: type, block_index, timestamp, time, end, speaker, text.
+    
+    Each entry is a dict with keys: type, block_index, timestamp, time, end, speaker, text, raw_message_count.
     input_data can be a file path or file-like object.
     """
     content = read_text(input_data)
@@ -87,6 +111,8 @@ def parse_vtt(input_data):
             start = timestamp_parts[0].strip()
             end = timestamp_parts[1].strip()
         text = " ".join(text_lines).strip()
+        # Compute raw_message_count: count non-empty lines in text_lines.
+        raw_message_count = sum(1 for line in text_lines if line.strip()) if text_lines else 1
         speaker = ""
         message = text
         if ":" in text:
@@ -100,7 +126,8 @@ def parse_vtt(input_data):
             "time": timestamp_to_seconds(start) if start else None,
             "end": end,
             "speaker": speaker,
-            "text": message
+            "text": message,
+            "raw_message_count": raw_message_count
         })
     return transcript
 
@@ -109,7 +136,7 @@ def parse_chat_log(input_data):
     Parse a chat log file where each line is formatted as:
       timestamp[TAB]Speaker Name:[TAB]Message text
     input_data can be a file path or file-like object.
-    Returns a list of chat entries (dicts) with keys: type, timestamp, time, speaker, message.
+    Returns a list of chat entries (dicts) with keys: type, timestamp, time, speaker, message, raw_message_count.
     """
     content = read_text(input_data)
     chat_entries = []
@@ -130,7 +157,8 @@ def parse_chat_log(input_data):
             "timestamp": timestamp,
             "time": timestamp_to_seconds(timestamp),
             "speaker": speaker,
-            "message": message
+            "message": message,
+            "raw_message_count": 1
         })
     return chat_entries
 
@@ -152,51 +180,83 @@ def stem_text(text, stemmer=None):
     stemmed_words = [stemmer.stem(word) for word in words]
     return " ".join(stemmed_words)
 
-# ---------- N-grams and Categorization ----------
+# ---------- Multilabel Classification Functions ----------
 
-def load_ngrams(input_data):
+def generate_model():
     """
-    Load n‑grams from a CSV file. Each row should have: id, phrase, ngram type, category.
-    input_data can be a file path or file-like object.
-    Returns a list of dicts with keys: phrase, ngram_type, category, stemmed_phrase, pattern.
+    Train a multilabel classifier using the training_data.csv file.
+    Expects a CSV with a column "text" and one or more label columns.
+   
+    Returns a tuple: (vectorizer, classifier, label_names)
+    If training_data.csv is missing or misformatted, returns None.
     """
-    content = read_text(input_data)
-    ngrams = []
-    stemmer = PorterStemmer()
-    reader = csv.reader(content.splitlines())
-    for row in reader:
-        if len(row) < 4:
-            continue
-        _, phrase, ngram_type, category = row[0], row[1], row[2], row[3]
-        stemmed_phrase = stem_text(phrase, stemmer)
-        pattern = re.compile(r'\b' + re.escape(stemmed_phrase) + r'\b')
-        ngrams.append({
-            "phrase": phrase,
-            "ngram_type": ngram_type,
-            "category": category,
-            "stemmed_phrase": stemmed_phrase,
-            "pattern": pattern
-        })
-    return ngrams
+    training_file = os.path.join(os.path.dirname(__file__), "training_data.csv")
+    if not os.path.exists(training_file):
+        print("Warning: training_data.csv not found. Skipping classifier training.")
+        return None
+    try:
+        initial_df = pd.read_csv(training_file)
+    except Exception as e:
+        print(f"Error reading training data: {e}")
+        return None
+   
+    if "text" not in initial_df.columns:
+        print("Error: Training data must have a 'text' column.")
+        return None
+   
+    X = initial_df["text"]
+    label_names = list(initial_df.columns.difference(["text"]))
+    if not label_names:
+        print("Error: No label columns found in training data.")
+        return None
+    
+    # Fill missing values and convert to binary (0/1)
+    initial_df[label_names] = initial_df[label_names].fillna(0)
+    y = (initial_df[label_names] > 0).astype(np.int64).values
+   
+    vectorizer = TfidfVectorizer(max_features=3000, max_df=0.85)
+    X_tfidf = vectorizer.fit_transform(X)
+    classifier = MLkNN(k=3)
+    classifier.fit(X_tfidf, y)
+    return vectorizer, classifier, label_names
 
-def categorize_message(message, ngrams_list):
+def get_trained_model():
     """
-    Categorize a message by checking for occurrence of any stemmed n‑grams.
-    Returns the category (or comma‑separated categories in case of a tie) with the highest match count.
-    If no n‑gram matches, returns "uncategorized".
+    Load the trained classifier from a pickle file if it exists.
+    Otherwise, train the model using generate_model(), save it to mlknn_model.pkl, and return it.
     """
-    stemmer = PorterStemmer()
-    message_stemmed = stem_text(message, stemmer)
-    counts = {}
-    for ngram in ngrams_list:
-        if ngram["pattern"].search(message_stemmed):
-            cat = ngram["category"]
-            counts[cat] = counts.get(cat, 0) + 1
-    if not counts:
+    pkl_path = os.path.join(os.path.dirname(__file__), "mlknn_model.pkl")
+    if os.path.exists(pkl_path):
+        try:
+            with open(pkl_path, "rb") as f:
+                model = pickle.load(f)
+            print("Loaded classifier from pickle.")
+            return model
+        except Exception as e:
+            print(f"Error loading pickle file: {e}. Retraining model...")
+    model = generate_model()
+    if model is not None:
+        try:
+            with open(pkl_path, "wb") as f:
+                pickle.dump(model, f)
+            print("Trained model saved to pickle.")
+        except Exception as e:
+            print(f"Error saving pickle file: {e}")
+    return model
+
+def classify_message_ml(message, vectorizer, classifier, label_names):
+    """
+    Classify a message using the provided multilabel classifier.
+    Returns a comma-separated string of predicted label names.
+    If no label is predicted, returns "uncategorized".
+    """
+    X_vectorized = vectorizer.transform([message])
+    prediction = classifier.predict(X_vectorized)
+    prediction_array = prediction.toarray()[0]
+    predicted_labels = [label for label, pred in zip(label_names, prediction_array) if pred == 1]
+    if not predicted_labels:
         return "uncategorized"
-    max_count = max(counts.values())
-    matched_categories = [cat for cat, cnt in counts.items() if cnt == max_count]
-    return ", ".join(matched_categories)
+    return ", ".join(predicted_labels)
 
 # ---------- Semantic Similarity ----------
 
@@ -211,15 +271,19 @@ def compute_semantic_similarity(message, lesson_embedding, model):
 
 # ---------- CSV Writing ----------
 
-def write_csv(data, output, ngrams_list=None, lesson_embedding=None, model=None):
+def write_csv(data, output, classifier_model=None, lesson_embedding=None, semantic_model=None):
     """
     Write the combined data to CSV.
     'output' can be a file path (str) or a file-like object.
+   
+    If classifier_model is provided (tuple of (vectorizer, classifier, label_names)),
+    each message is assigned a category using the multilabel classifier.
+    If lesson_embedding and semantic_model are provided, lesson relevancy is computed.
     """
-    fieldnames = ["type", "block_index", "timestamp", "time", "end", "speaker", "message", "stemmed_message"]
-    if ngrams_list is not None:
+    fieldnames = ["type", "block_index", "timestamp", "time", "end", "speaker", "message", "stemmed_message", "raw_message_count"]
+    if classifier_model is not None:
         fieldnames.append("assigned_category")
-    if lesson_embedding is not None and model is not None:
+    if lesson_embedding is not None and semantic_model is not None:
         fieldnames.append("lesson_relevancy")
     rows = []
     stemmer = PorterStemmer()
@@ -235,11 +299,13 @@ def write_csv(data, output, ngrams_list=None, lesson_embedding=None, model=None)
             "speaker": entry.get("speaker", ""),
             "message": message,
             "stemmed_message": stemmed_message,
+            "raw_message_count": entry.get("raw_message_count", 1)
         }
-        if ngrams_list is not None:
-            row["assigned_category"] = categorize_message(message, ngrams_list)
-        if lesson_embedding is not None and model is not None:
-            row["lesson_relevancy"] = compute_semantic_similarity(message, lesson_embedding, model)
+        if classifier_model is not None:
+            vectorizer, classifier, label_names = classifier_model
+            row["assigned_category"] = classify_message_ml(message, vectorizer, classifier, label_names)
+        if lesson_embedding is not None and semantic_model is not None:
+            row["lesson_relevancy"] = compute_semantic_similarity(message, lesson_embedding, semantic_model)
         rows.append(row)
     if hasattr(output, "write"):
         writer = csv.DictWriter(output, fieldnames=fieldnames)
@@ -253,45 +319,47 @@ def write_csv(data, output, ngrams_list=None, lesson_embedding=None, model=None)
 
 # ---------- High-Level Processing ----------
 
-def process_zoom_data(vtt_input, chat_input, output, ngrams_input=None, lesson_plan_input=None):
+def process_zoom_data(vtt_input, chat_input, output, lesson_plan_input=None):
     """
     Process Zoom data by parsing transcript and chat log, combining entries,
+    classifying each message using a trained multilabel classifier,
     optionally processing a lesson plan for semantic similarity,
     and writing CSV output.
-    
+   
     Parameters:
       vtt_input, chat_input, lesson_plan_input: file path (str) or file-like object.
-      output: file path (str) or file-like object to write CSV.
-      ngrams_input: if not provided, a fixed file "ngrams.csv" in the same directory is used.
-    
+      output: file path (str) or file-like object.
+   
     Returns the combined list of entries.
     """
     transcript = parse_vtt(vtt_input)
     chat_log = parse_chat_log(chat_input)
     combined = combine_data(transcript, chat_log)
-    if ngrams_input is None:
-        ngrams_input = os.path.join(os.path.dirname(__file__), "ngrams.csv")
-    ngrams_list = load_ngrams(ngrams_input)
+   
+    # Use pickled classifier if available; otherwise, train.
+    classifier_model = get_trained_model()
+   
     lesson_embedding = None
     semantic_model = None
     if lesson_plan_input is not None:
         lesson_content = read_text(lesson_plan_input)
         semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
         lesson_embedding = semantic_model.encode(lesson_content, convert_to_tensor=True)
-    write_csv(combined, output, ngrams_list, lesson_embedding, semantic_model)
+   
+    write_csv(combined, output, classifier_model, lesson_embedding, semantic_model)
     return combined
 
 # ---------- CLI (For Testing) ----------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Parse Zoom transcript and chat log files, process them, and output a CSV file."
+        description="Parse Zoom transcript and chat log files, classify them using a multilabel model, and output a CSV file."
     )
     parser.add_argument("--vtt", required=True, help="Path to the VTT transcript file")
     parser.add_argument("--chat", required=True, help="Path to the chat log file")
     parser.add_argument("--output", required=True, help="Path to the output CSV file")
-    parser.add_argument("--ngrams", help="Optional path to the n‑grams CSV file (if not provided, uses fixed ngrams.csv)")
     parser.add_argument("--lesson", help="Optional path to the lesson plan text file")
     args = parser.parse_args()
-    process_zoom_data(args.vtt, args.chat, args.output, args.ngrams, args.lesson)
+   
+    process_zoom_data(args.vtt, args.chat, args.output, args.lesson)
     print(f"Combined CSV output written to {args.output}")

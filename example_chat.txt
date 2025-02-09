@@ -1,0 +1,13 @@
+00:00:10	Ms. Rivera:	Good morning, everyone! Welcome to today's Ignite session.
+00:00:15	Alan Qiao:	I'm really excited to start our project!
+00:00:20	Camden Chin:	Hi Ms. Rivera, I've been thinking about how we can design a water filter.
+00:00:25	Jordan Lee:	Hello all! I've got some ideas for using sand and gravel in our model.
+00:00:30	Taylor Kim:	Cool, Jordan. I was also wondering if a coffee filter might work as a pre-filter.
+00:00:35	Chris Davis:	That sounds interesting, Taylor. It could help reduce some of the pollution.
+00:00:40	Morgan Patel:	I love that we're combining engineering with real-world issues.
+00:00:45	Ms. Rivera:	Fantastic ideas, everyone! Keep them coming as you brainstorm.
+00:00:50	Alan Qiao:	Can we also test for algae in the water? I read that algae blooms affect water quality.
+00:00:55	Camden Chin:	Yes, Alan, that would be a great addition to our experiment.
+00:01:00	Jordan Lee:	I'm excited to prototype and see how our design can help our community.
+00:01:05	Taylor Kim:	Agreed, this project really inspires me to think like an engineer!
+00:01:10	Ms. Rivera:	Excellent discussion, team. Let's get to work and build something amazing!

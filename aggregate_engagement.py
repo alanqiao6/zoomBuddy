@@ -55,21 +55,37 @@ def aggregate_engagement(input_csv, roster_input):
     Returns a tuple (student_stats, categories) where:
       - student_stats is a dict mapping student names to metrics.
       - categories is a list of expected engagement categories.
+    
+    This function uses two counts:
+      - "total_messages": the count of parsed rows (used for engagement score calculation), and
+      - "real_messages": the sum of raw_message_count values from the original transcript.
     """
-    # Define the expected categories.
+    # Expected engagement categories.
     categories = ["environment", "community", "personal", "wonder", "tinker", "identity", "disruption"]
     roster_set = load_roster(roster_input)
-    student_stats = {student: {"total_messages": 0, "lesson_relevancy_sum": 0.0} for student in roster_set}
+    # Initialize with both counts.
+    student_stats = {
+        student: {"total_messages": 0, "real_messages": 0, "lesson_relevancy_sum": 0.0}
+        for student in roster_set
+    }
     for student in student_stats:
         for cat in categories:
             student_stats[student][cat] = 0
     content = read_text(input_csv)
     reader = csv.DictReader(content.splitlines())
     for row in reader:
-        # Convert speaker name to lower-case.
+        # Use lower-case speaker name for matching.
         speaker = row.get("speaker", "").strip().lower()
         if speaker in student_stats:
+            # Increment parsed message count.
             student_stats[speaker]["total_messages"] += 1
+            # Increment real message count using raw_message_count from CSV (default to 1).
+            try:
+                raw_count = int(row.get("raw_message_count", 1))
+            except ValueError:
+                raw_count = 1
+            student_stats[speaker]["real_messages"] += raw_count
+            # Accumulate lesson relevancy.
             relevancy_str = row.get("lesson_relevancy", "").strip()
             if relevancy_str:
                 try:
@@ -77,14 +93,15 @@ def aggregate_engagement(input_csv, roster_input):
                     student_stats[speaker]["lesson_relevancy_sum"] += relevancy
                 except ValueError:
                     pass
+            # Aggregate category counts.
             assigned = row.get("assigned_category", "").strip().lower()
             if assigned and assigned != "uncategorized":
                 cats = [cat.strip() for cat in assigned.split(",")]
                 for cat in cats:
                     if cat in categories:
                         student_stats[speaker][cat] += 1
-    # Compute composite engagement score as:
-    # engagement_score = total_messages * lesson_relevancy_sum
+    # Compute composite engagement score using the parsed count (total_messages).
+    # Engagement score = total_messages * lesson_relevancy_sum.
     for student, stats in student_stats.items():
         stats["engagement_score"] = stats["total_messages"] * stats["lesson_relevancy_sum"]
     return student_stats, categories
@@ -93,14 +110,16 @@ def write_aggregate_to_csv(aggregate_data, categories, output):
     """
     Write the aggregated engagement metrics to a CSV file.
     'output' can be a file path or a file-like object.
-    The CSV includes: student, total_messages, engagement_score, and one column per category.
+    
+    The CSV includes: student, real_messages (displayed as the number of messages),
+    engagement_score, and one column per engagement category.
     """
-    fieldnames = ["student", "total_messages", "engagement_score"] + categories
+    fieldnames = ["student", "real_messages", "engagement_score"] + categories
     rows = []
     for student, stats in aggregate_data.items():
         row = {
             "student": student,
-            "total_messages": stats["total_messages"],
+            "real_messages": stats["real_messages"],
             "engagement_score": stats["engagement_score"]
         }
         for cat in categories:
