@@ -1,0 +1,4 @@
+Flask
+nltk
+sentence-transformers
+gunicorn
