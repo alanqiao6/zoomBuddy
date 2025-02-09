@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aggregated Engagement Metrics</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4">
+  <h1>Aggregated Engagement Metrics</h1>
+  <table class="table table-bordered mt-4">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Total Messages</th>
+        <th>Avg Lesson Relevancy</th>
+        {% for cat in categories %}
+        <th>{{ cat.capitalize() }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for student, stats in aggregate_data.items() %}
+      <tr>
+        <td>{{ student }}</td>
+        <td>{{ stats.total_messages }}</td>
+        <td>{{ "%.3f"|format(stats.avg_lesson_relevancy) }}</td>
+        {% for cat in categories %}
+        <td>{{ stats[cat] }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <a href="{{ url_for('download_file', filename='aggregate_output.csv') }}" class="btn btn-success">Download Aggregate CSV</a>
+  <a href="{{ url_for('index') }}" class="btn btn-primary ml-2">Process New Files</a>
+</div>
+</body>
+</html>
