@@ -11,7 +11,7 @@ This module provides functions to:
   - Write the combined data to CSV.
 
 File inputs are "I/O‑optional": you can pass either a file path (str) or a file-like object.
-If no n‑grams file is provided, it defaults to the fixed "ngrams.csv" file in the repository.
+If no n‑grams file is provided, it defaults to the fixed "ngrams.csv" file in the same directory.
 """
 
 import re

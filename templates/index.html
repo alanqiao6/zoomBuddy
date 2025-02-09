@@ -1,27 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mt-4">
-  <h2>Upload Your Files</h2>
-  <p>Please upload your Zoom transcript (VTT), chat log (TXT), and student roster (TXT). Optionally, you can also upload a lesson plan (TXT).</p>
-  <form action="{{ url_for('process_files') }}" method="post" enctype="multipart/form-data">
-    <div class="mb-3">
-      <label for="transcript" class="form-label">Transcript (VTT):</label>
-      <input type="file" class="form-control" id="transcript" name="transcript" required>
-    </div>
-    <div class="mb-3">
-      <label for="chat" class="form-label">Chat Log (TXT):</label>
-      <input type="file" class="form-control" id="chat" name="chat" required>
-    </div>
-    <div class="mb-3">
-      <label for="roster" class="form-label">Student Roster (TXT):</label>
-      <input type="file" class="form-control" id="roster" name="roster" required>
-    </div>
-    <div class="mb-3">
-      <label for="lesson" class="form-label">Lesson Plan (TXT) [Optional]:</label>
-      <input type="file" class="form-control" id="lesson" name="lesson">
-    </div>
-    <button type="submit" class="btn btn-success">Analyze Engagement</button>
-  </form>
+<div class="card mt-4 animate__animated animate__fadeInUp">
+  <div class="card-body">
+    <h2 class="card-title">Upload Your Files</h2>
+    <p class="card-text">
+      Please upload your Zoom transcript (VTT), chat log (TXT), and student roster (TXT). Optionally, you can upload a lesson plan (TXT) for enhanced analysis.
+    </p>
+    <form id="uploadForm" action="{{ url_for('process_files') }}" method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="transcript" class="form-label">Transcript (VTT):</label>
+        <input type="file" class="form-control" id="transcript" name="transcript" required>
+      </div>
+      <div class="mb-3">
+        <label for="chat" class="form-label">Chat Log (TXT):</label>
+        <input type="file" class="form-control" id="chat" name="chat" required>
+      </div>
+      <div class="mb-3">
+        <label for="roster" class="form-label">Student Roster (TXT):</label>
+        <input type="file" class="form-control" id="roster" name="roster" required>
+      </div>
+      <div class="mb-3">
+        <label for="lesson" class="form-label">Lesson Plan (TXT) [Optional]:</label>
+        <input type="file" class="form-control" id="lesson" name="lesson">
+      </div>
+      <button id="analyzeButton" type="submit" class="btn btn-success">
+        Analyze Engagement
+      </button>
+    </form>
+  </div>
 </div>
+
+<script>
+  // When the form is submitted, disable the button and show a spinner.
+  document.getElementById('uploadForm').addEventListener('submit', function() {
+      var btn = document.getElementById('analyzeButton');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analyzing...';
+  });
+</script>
 {% endblock %}
