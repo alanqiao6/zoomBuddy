@@ -4,6 +4,7 @@ Flask
 nltk
 sentence-transformers
 gunicorn
-numpy
+setuptools<58
+numpy<1.24
 scikit-learn==0.24.2
 scikit-multilearn
