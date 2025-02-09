@@ -274,20 +274,31 @@ def compute_semantic_similarity(message, lesson_embedding, model):
 def write_csv(data, output, classifier_model=None, lesson_embedding=None, semantic_model=None):
     """
     Write the combined data to CSV.
-    'output' can be a file path (str) or a file-like object.
-   
-    If classifier_model is provided (tuple of (vectorizer, classifier, label_names)),
-    each message is assigned a category using the multilabel classifier.
-    If lesson_embedding and semantic_model are provided, lesson relevancy is computed.
+    
+    The CSV includes: type, block_index, timestamp, time, end, speaker,
+    message, stemmed_message, raw_message_count, and optionally:
+      - assigned_category (if classifier_model is provided)
+      - lesson_relevancy (if lesson_embedding and semantic_model are provided)
+    
+    'output' can be a file path or a file-like object.
     """
-    fieldnames = ["type", "block_index", "timestamp", "time", "end", "speaker", "message", "stemmed_message", "raw_message_count"]
+    import csv
+    from nltk.stem.porter import PorterStemmer
+
+    fieldnames = [
+        "type", "block_index", "timestamp", "time", "end",
+        "speaker", "message", "stemmed_message", "raw_message_count"
+    ]
     if classifier_model is not None:
         fieldnames.append("assigned_category")
     if lesson_embedding is not None and semantic_model is not None:
         fieldnames.append("lesson_relevancy")
+    
     rows = []
-    stemmer = PorterStemmer()
+    lesson_messages = []  # will store messages for batch encoding
+    stemmer = PorterStemmer()  # initialize once outside the loop
     for entry in data:
+        # Get the message text (different key depending on type)
         message = entry.get("text", "") if entry.get("type") == "transcript" else entry.get("message", "")
         stemmed_message = stem_text(message, stemmer)
         row = {
@@ -304,18 +315,32 @@ def write_csv(data, output, classifier_model=None, lesson_embedding=None, semant
         if classifier_model is not None:
             vectorizer, classifier, label_names = classifier_model
             row["assigned_category"] = classify_message_ml(message, vectorizer, classifier, label_names)
-        if lesson_embedding is not None and semantic_model is not None:
-            row["lesson_relevancy"] = compute_semantic_similarity(message, lesson_embedding, semantic_model)
         rows.append(row)
+        if lesson_embedding is not None and semantic_model is not None:
+            lesson_messages.append(message)
+    
+    # If lesson relevancy is to be computed, do it in batch
+    if lesson_embedding is not None and semantic_model is not None and lesson_messages:
+        # Batch encode all messages
+        message_embeddings = semantic_model.encode(lesson_messages, convert_to_tensor=True)
+        # Compute cosine similarities against the single lesson embedding.
+        # util.cos_sim returns a tensor of shape (num_messages, 1)
+        similarities = util.cos_sim(message_embeddings, lesson_embedding)
+        # Update each row with its similarity value
+        for i, row in enumerate(rows):
+            row["lesson_relevancy"] = float(similarities[i][0])
+    
+    # Write out the CSV
     if hasattr(output, "write"):
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
     else:
-        with open(output, "w", encoding="utf-8", newline="") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        with open(output, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
+
 
 # ---------- High-Level Processing ----------
 
