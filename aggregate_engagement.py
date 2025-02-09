@@ -5,7 +5,7 @@ aggregate_engagement.py
 This module provides functions to:
   - Load a student roster from a file (one student name per line).
   - Aggregate engagement metrics from a parsed CSV file (produced by zoom_parser.py).
-  - Compute a composite engagement score for each student.
+  - Compute a composite engagement score for each student and normalize it as a percentage.
   - Write the aggregated metrics to a CSV file.
 
 File inputs are I/O‑optional (you can pass a file path or a file-like object).
@@ -56,14 +56,18 @@ def aggregate_engagement(input_csv, roster_input):
       - student_stats is a dict mapping student names to metrics.
       - categories is a list of expected engagement categories.
     
-    This function uses two counts:
+    This function now tracks two counts:
       - "total_messages": the count of parsed rows (used for engagement score calculation), and
       - "real_messages": the sum of raw_message_count values from the original transcript.
+    
+    It then computes a composite engagement score as:
+        engagement_score = total_messages * lesson_relevancy_sum
+    and normalizes that score to a percentage (0–100) based on the maximum engagement score observed.
     """
-    # Expected engagement categories.
+    # Define the expected engagement categories.
     categories = ["environment", "community", "personal", "wonder", "tinker", "identity", "disruption"]
     roster_set = load_roster(roster_input)
-    # Initialize with both counts.
+    # Initialize with both message counts.
     student_stats = {
         student: {"total_messages": 0, "real_messages": 0, "lesson_relevancy_sum": 0.0}
         for student in roster_set
@@ -74,12 +78,12 @@ def aggregate_engagement(input_csv, roster_input):
     content = read_text(input_csv)
     reader = csv.DictReader(content.splitlines())
     for row in reader:
-        # Use lower-case speaker name for matching.
+        # Use lower-case for matching.
         speaker = row.get("speaker", "").strip().lower()
         if speaker in student_stats:
-            # Increment parsed message count.
+            # Increment parsed message count (each row counts as 1).
             student_stats[speaker]["total_messages"] += 1
-            # Increment real message count using raw_message_count from CSV (default to 1).
+            # Increment real message count using raw_message_count from CSV (default to 1 if missing).
             try:
                 raw_count = int(row.get("raw_message_count", 1))
             except ValueError:
@@ -100,27 +104,35 @@ def aggregate_engagement(input_csv, roster_input):
                 for cat in cats:
                     if cat in categories:
                         student_stats[speaker][cat] += 1
-    # Compute composite engagement score using the parsed count (total_messages).
-    # Engagement score = total_messages * lesson_relevancy_sum.
+    # Compute composite engagement score using the parsed count.
     for student, stats in student_stats.items():
         stats["engagement_score"] = stats["total_messages"] * stats["lesson_relevancy_sum"]
+    
+    # Normalize engagement score as a percentage out of 100.
+    max_score = max((stats["engagement_score"] for stats in student_stats.values()), default=0)
+    for student, stats in student_stats.items():
+        if max_score > 0:
+            stats["engagement_percentage"] = (stats["engagement_score"] / max_score) * 100
+        else:
+            stats["engagement_percentage"] = 0.0
+
     return student_stats, categories
 
 def write_aggregate_to_csv(aggregate_data, categories, output):
     """
     Write the aggregated engagement metrics to a CSV file.
-    'output' can be a file path or a file-like object.
     
-    The CSV includes: student, real_messages (displayed as the number of messages),
-    engagement_score, and one column per engagement category.
+    The CSV includes: student, real_messages (the actual number of messages), 
+    normalized engagement percentage, and one column per engagement category.
+    'output' can be a file path or a file-like object.
     """
-    fieldnames = ["student", "real_messages", "engagement_score"] + categories
+    fieldnames = ["student", "real_messages", "engagement_percentage"] + categories
     rows = []
     for student, stats in aggregate_data.items():
         row = {
             "student": student,
             "real_messages": stats["real_messages"],
-            "engagement_score": stats["engagement_score"]
+            "engagement_percentage": stats["engagement_percentage"]
         }
         for cat in categories:
             row[cat] = stats[cat]
