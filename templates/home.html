@@ -1,35 +1,73 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="jumbotron mt-4 p-5 bg-white rounded-3 animate__animated animate__fadeIn">
-  <h1 class="display-4">Welcome to Zoom Engagement Analyzer!</h1>
-  <p class="lead">Gain in-depth insights into student participation in your Zoom sessions.</p>
-  <hr class="my-4">
-  <p>Upload your transcript, chat log, and roster to see interactive charts and detailed engagement metrics.</p>
-  <a class="btn btn-primary btn-lg" href="{{ url_for('upload') }}" role="button">Get Started</a>
+<!-- Hero Section -->
+<div class="hero-section text-center text-white d-flex align-items-center justify-content-center">
+  <div>
+    <h1 class="display-3 animate__animated animate__fadeInDown">Zoom Engagement Analyzer</h1>
+    <p class="lead animate__animated animate__fadeIn">Turn your Zoom session data into actionable insights.</p>
+    <a href="{{ url_for('upload') }}" class="btn btn-lg btn-primary mt-3 animate__animated animate__zoomIn">Get Started</a>
+  </div>
 </div>
-{% endblock %}
 
-{% block extra_scripts %}
-<script>
-  window.onload = function() {
-      const container = document.querySelector('.bg-logos');
-      if (!container) {
-          console.error("No element with class 'bg-logos' found.");
-          return;
-      }
-      // Get the static URL for ignite.png
-      const logoUrl = "{{ url_for('static', filename='ignite.png') }}";
-      const numLogos = 50; // Number of logos to scatter
-      for (let i = 0; i < numLogos; i++) {
-          const img = document.createElement('img');
-          img.src = logoUrl;
-          img.classList.add('bg-logo');
-          // Random positions using viewport units
-          img.style.top = Math.random() * 100 + "vh";
-          img.style.left = Math.random() * 100 + "vw";
-          container.appendChild(img);
-      }
-  };
-</script>
+<!-- Features Section -->
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-4">
+      <div class="card feature-card animate__animated animate__fadeInUp">
+        <div class="card-body text-center">
+          <i class="fas fa-chart-line fa-3x text-primary"></i>
+          <h5 class="card-title mt-3">Engagement Metrics</h5>
+          <p class="card-text">Analyze Zoom chat & transcript data to measure student engagement.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card feature-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+        <div class="card-body text-center">
+          <i class="fas fa-file-upload fa-3x text-success"></i>
+          <h5 class="card-title mt-3">Easy File Upload</h5>
+          <p class="card-text">Drag & drop your Zoom files for quick analysis.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card feature-card animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+        <div class="card-body text-center">
+          <i class="fas fa-chart-pie fa-3x text-danger"></i>
+          <h5 class="card-title mt-3">Data Visualization</h5>
+          <p class="card-text">View insights with interactive tables and charts.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Hero Section */
+  .hero-section {
+    background: url("{{ url_for('static', filename='background.jpg') }}") center/cover no-repeat;
+    height: 80vh;
+  }
+
+  .hero-section h1 {
+    font-weight: 700;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Feature Cards */
+  .feature-card {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-10px);
+  }
+
+</style>
+
+<!-- FontAwesome for Icons -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
 {% endblock %}
