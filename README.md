@@ -9,15 +9,13 @@ Here is a video demo: [ZoomBuddy Video Demo](https://duke.zoom.us/rec/share/prTU
 
 This project was built by four Duke undergraduates during HackDuke 2025 to support Ignite, a STEM program aimed at increasing STEM self-efficacy for students in Durham public schools.  
 
-The Zoom Engagement Analyzer helps educators measure student engagement and participation during virtual Zoom sessions by analyzing:
+The **Zoom Engagement Analyzer** helps educators measure student engagement and participation during virtual Zoom sessions by analyzing:
 
 - Chat logs
 - Transcripts
 - Lesson relevance
 
-Using Natural Language Processing (NLP) and Machine Learning, the tool categorizes student interactions and quantifies engagement based on specific STEM-related themes.
-
-The Zoom Engagement Analyzer helps educators measure student engagement and participation in virtual Zoom sessions. By analyzing chat logs, transcripts, and lesson plans, this tool categorizes student interactions and provides detailed analytics to assess engagement levels.  
+Using **Natural Language Processing (NLP) and Machine Learning**, the tool categorizes student interactions and quantifies engagement based on specific STEM-related themes. It provides detailed analytics to help educators track participation and lesson alignment.
 
 ---
 
