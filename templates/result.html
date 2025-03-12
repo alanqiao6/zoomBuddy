@@ -4,16 +4,21 @@
 <div class="mt-5 pt-5">
   <h2 class="mb-4">Aggregated Engagement Metrics</h2>
 
-  <!-- Nav tabs with custom styling -->
+  <!-- Nav tabs -->
   <ul class="nav nav-tabs" id="displayTabs" role="tablist">
-    <li class="nav-item" role="presentation">
+    <li class="nav-item">
       <button class="nav-link active custom-tab" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab" aria-controls="table-view" aria-selected="true">
         Table View
       </button>
     </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link custom-tab" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart-view" type="button" role="tab" aria-controls="chart-view" aria-selected="false">
-        Chart View
+    <li class="nav-item">
+      <button class="nav-link custom-tab" id="class-analytics-tab" data-bs-toggle="tab" data-bs-target="#class-analytics-view" type="button" role="tab" aria-controls="class-analytics-view" aria-selected="false">
+        Class Analytics
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link custom-tab" id="student-tab" data-bs-toggle="tab" data-bs-target="#student-view" type="button" role="tab" aria-controls="student-view" aria-selected="false">
+        Individual Student
       </button>
     </li>
   </ul>
@@ -49,15 +54,37 @@
         </table>
       </div>
     </div>
-    <!-- Chart View -->
-    <div class="tab-pane fade" id="chart-view" role="tabpanel" aria-labelledby="chart-tab">
+
+    <!-- Class Analytics View -->
+    <div class="tab-pane fade" id="class-analytics-view" role="tabpanel" aria-labelledby="class-analytics-tab">
       <div class="mb-4">
         <h3>Total Messages per Category</h3>
         <canvas id="categoryChart"></canvas>
       </div>
+      <div class="mb-4">
+        <h3>Engagement Score Distribution</h3>
+        <canvas id="engagementScoreChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Individual Student View -->
+    <div class="tab-pane fade" id="student-view" role="tabpanel" aria-labelledby="student-tab">
+      <div class="mb-4">
+        <label for="studentSelect" class="form-label">Select a Student:</label>
+        <select id="studentSelect" class="form-select">
+          <option value="">-- Select a Student --</option>
+          {% for student in aggregate_data.keys() %}
+            <option value="{{ student }}">{{ student }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <h3 id="studentChartTitle">Student Engagement Breakdown</h3>
+        <canvas id="studentEngagementChart"></canvas>
+      </div>
     </div>
   </div>
-  
+
   <div class="mt-4">
     <a href="{{ url_for('download_file', filename='aggregate_output.csv') }}" class="btn btn-success">Download Aggregate CSV</a>
     <a href="{{ url_for('upload') }}" class="btn btn-primary ms-2">Process New Files</a>
@@ -67,7 +94,7 @@
 <!-- Custom styles for tabs -->
 <style>
   .nav-tabs .nav-link {
-    background-color: #e2e2e2;
+    background-color: #b3b4b6;
     color: #333;
     border: 1px solid #ddd;
     border-bottom-color: transparent;
@@ -85,7 +112,7 @@
   }
 </style>
 
-<!-- DataTables CSS and JS for the table -->
+<!-- DataTables for Filtering & Pagination -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
@@ -93,38 +120,33 @@
 <script>
   $(document).ready(function() {
       $('#engagementTable').DataTable({
-          "order": [[ 2, "desc" ]] // Order by Engagement Score descending by default
+          "pageLength": 10, // Shows 10 students per page
+          "order": [[ 2, "desc" ]], // Order by Engagement Score descending
+          "searching": true, // Enable search filter
+          "lengthChange": true // Allow changing entries per page
       });
   });
 </script>
 
-<!-- Chart.js for the bar chart -->
+<!-- Chart.js for Analytics -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Prepare data for Chart.js using Jinja to inject data as JSON.
   const categories = {{ categories|tojson }};
   const aggregateData = {{ aggregate_data|tojson }};
-  
-  // Calculate total counts for each category across all students.
-  let totals = {};
-  categories.forEach(cat => {
-      totals[cat] = 0;
-  });
-  for (const student in aggregateData) {
-      categories.forEach(cat => {
-          totals[cat] += parseInt(aggregateData[student][cat]) || 0;
-      });
-  }
-  
-  const ctx = document.getElementById('categoryChart').getContext('2d');
-  new Chart(ctx, {
-      type: 'bar',
-      data: {
-          labels: categories.map(cat => cat.charAt(0).toUpperCase() + cat.slice(1)),
-          datasets: [{
-              label: 'Total Messages',
-              data: categories.map(cat => totals[cat]),
-              backgroundColor: [
+
+  // ======= CLASS ANALYTICS: Total Messages per Category =======
+  const categoryTotals = categories.map(cat => 
+    Object.values(aggregateData).reduce((sum, student) => sum + student[cat], 0)
+  );
+
+  new Chart(document.getElementById('categoryChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: categories,
+      datasets: [{
+        label: 'Total Messages',
+        data: categoryTotals,
+        backgroundColor: [
                   'rgba(102, 126, 234, 0.9)',
                   'rgba(118, 75, 162, 0.9)',
                   'rgba(255, 159, 64, 0.9)',
@@ -142,18 +164,89 @@
                   'rgba(255, 205, 86, 1)',
                   'rgba(255, 99, 132, 1)'
               ],
-              borderWidth: 1
-          }]
-      },
-      options: {
-          responsive: true,
-          plugins: {
-              legend: { display: false }
-          },
-          scales: {
-              y: { beginAtZero: true, ticks: { stepSize: 1 } }
-          }
-      }
+        borderWidth: 1
+      }]
+    },
+    options: { responsive: true, plugins: {legend: { display: false }}, scales: { y: { beginAtZero: true } } }
+  });
+
+  // ======= CLASS ANALYTICS: Engagement Score Distribution =======
+  const engagementScores = Object.values(aggregateData).map(s => s.engagement_score);
+
+  new Chart(document.getElementById('engagementScoreChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(aggregateData),
+      datasets: [{
+        label: 'Engagement Score',
+        data: engagementScores,
+        backgroundColor: [
+                  'rgba(102, 126, 234, 0.9)',
+                  'rgba(118, 75, 162, 0.9)',
+                  'rgba(255, 159, 64, 0.9)',
+                  'rgba(75, 192, 192, 0.9)',
+                  'rgba(153, 102, 255, 0.9)',
+                  'rgba(255, 205, 86, 0.9)',
+                  'rgba(255, 99, 132, 0.9)'
+              ],
+              borderColor: [
+                  'rgba(102, 126, 234, 1)',
+                  'rgba(118, 75, 162, 1)',
+                  'rgba(255, 159, 64, 1)',
+                  'rgba(75, 192, 192, 1)',
+                  'rgba(153, 102, 255, 1)',
+                  'rgba(255, 205, 86, 1)',
+                  'rgba(255, 99, 132, 1)'
+              ],
+        borderWidth: 1
+      }]
+    },
+    options: { responsive: true, plugins: {legend: { display: false }},scales: { y: { beginAtZero: true } } }
+  });
+
+  // ======= INDIVIDUAL STUDENT: Engagement Breakdown =======
+  const studentSelect = document.getElementById("studentSelect");
+  const ctxStudent = document.getElementById("studentEngagementChart").getContext("2d");
+
+  let studentChart = new Chart(ctxStudent, {
+    type: "bar",
+    data: { labels: categories, datasets: [] },
+    options: { responsive: true, plugins: {legend: { display: false }}, scales: { y: { beginAtZero: true } } }
+  });
+
+  studentSelect.addEventListener("change", function () {
+    const student = this.value;
+    if (!student) return;
+
+    const studentStats = aggregateData[student];
+    const categoryValues = categories.map(cat => studentStats[cat]);
+
+    studentChart.data.datasets = [{
+      label: student,
+      data: categoryValues,
+      backgroundColor: [
+                  'rgba(102, 126, 234, 0.9)',
+                  'rgba(118, 75, 162, 0.9)',
+                  'rgba(255, 159, 64, 0.9)',
+                  'rgba(75, 192, 192, 0.9)',
+                  'rgba(153, 102, 255, 0.9)',
+                  'rgba(255, 205, 86, 0.9)',
+                  'rgba(255, 99, 132, 0.9)'
+              ],
+              borderColor: [
+                  'rgba(102, 126, 234, 1)',
+                  'rgba(118, 75, 162, 1)',
+                  'rgba(255, 159, 64, 1)',
+                  'rgba(75, 192, 192, 1)',
+                  'rgba(153, 102, 255, 1)',
+                  'rgba(255, 205, 86, 1)',
+                  'rgba(255, 99, 132, 1)'
+              ],
+      borderWidth: 1
+    }];
+
+    studentChart.update();
+    document.getElementById("studentChartTitle").innerText = `${student}'s Engagement Breakdown`;
   });
 </script>
 {% endblock %}
