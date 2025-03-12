@@ -9,16 +9,18 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
     body {
-      background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+      background: #fbfbfb; /* White background */
+      color: #001F3F; /* Navy blue text */
       transition: background 0.5s ease-in-out;
     }
     .navbar {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-    }
+      background-color: #085494; /* Dark navy blue */
+    } 
     .navbar-brand, .nav-link {
       color: #fff !important;
       font-weight: 600;
       transition: color 0.3s;
+      text-shadow: none !important;  /* Removes any glow effect */
     }
     .nav-link:hover {
       color: #ffdd57 !important;
@@ -50,6 +52,24 @@
     .bg-logo:hover {
       transform: scale(1.1);
     }
+    /* Home Page Header */
+    .hero-section h1,
+    .hero-section p {
+      color: #1c1c1c; 
+      text-shadow: none !important;  /* Removes any glow effect */
+    }
+
+    * Feature Cards */
+    .feature-card {
+      background: #f8f9fa; /* Light grey cards */
+      color: #1c1c1c;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .feature-card:hover {
+    transform: translateY(-10px);
+    }
   </style>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -61,7 +81,7 @@
   <!-- Navigation Bar -->
   <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
     <div class="container-fluid">
-      <a class="navbar-brand" href="{{ url_for('home') }}">Zoom Engagement Analyzer</a>
+      <a class="navbar-brand" href="{{ url_for('home') }}">Zoom Buddy</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" 
               aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -89,5 +109,34 @@
   {% block extra_scripts %}{% endblock %}
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const container = document.querySelector('.bg-logos');
+      if (!container) {
+          console.error("No element with class 'bg-logos' found.");
+          return;
+      }
+  
+      // Ignite logo path (Make sure ignite.png is in /static/)
+      const logoUrl = "{{ url_for('static', filename='ignite.png') }}";
+      const numLogos = 50; // Adjust number of logos
+  
+      for (let i = 0; i < numLogos; i++) {
+          const img = document.createElement('img');
+          img.src = logoUrl;
+          img.classList.add('bg-logo');
+          img.style.position = "absolute";
+          img.style.width = "120px"; /* Adjust logo size */
+          img.style.opacity = "0.1"; /* Set transparency */
+          img.style.pointerEvents = "none"; /* Ensure no interference */
+          img.style.top = Math.random() * 100 + "vh";
+          img.style.left = Math.random() * 100 + "vw";
+          container.appendChild(img);
+      }
+    });
+  </script>
+  
+  
 </body>
 </html>
