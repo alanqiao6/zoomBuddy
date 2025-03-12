@@ -2,6 +2,7 @@
 
 ## Website and Video Demo
 Here is the deployed website: [ZoomBuddy Website](https://zoombuddy.onrender.com/)
+
 Here is a video demo: [ZoomBuddy Video Demo](https://duke.zoom.us/rec/share/prTUr6Ky9y9n91VzPgfjXJxHSAOuLGdrcI6aTXDU-NOgmTlK2V98aph2hU35pTQR.YZhrW6sG8s9opZbO?startTime=1741806209000)
 
 ## Overview
