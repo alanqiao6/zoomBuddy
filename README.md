@@ -1,6 +1,11 @@
 # Zoom Engagement Analyzer
 
-## Overview  
+## Website and Video Demo
+Here is the deployed website: [ZoomBuddy Website](https://zoombuddy.onrender.com/)
+Here is a video demo: [ZoomBuddy Video Demo](https://duke.zoom.us/rec/share/prTUr6Ky9y9n91VzPgfjXJxHSAOuLGdrcI6aTXDU-NOgmTlK2V98aph2hU35pTQR.YZhrW6sG8s9opZbO?startTime=1741806209000)
+
+## Overview
+
 This project was built by four Duke undergraduates during HackDuke 2025 to support Ignite, a STEM program aimed at increasing STEM self-efficacy for students in Durham public schools.  
 
 The Zoom Engagement Analyzer helps educators measure student engagement and participation during virtual Zoom sessions by analyzing:
